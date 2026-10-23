@@ -1,8 +1,6 @@
 {
-  "name": "Markdown Converter",
-  "description": "Convert any document—PDFs, Word docs, images, text, and code—into clean, beautifully structured Markdown files instantly with AI.",
+  "name": "Web Scraper to Markdown Converter",
+  "description": "Scrape web pages and generate clean, comprehensive, structured Markdown (.md) documents with AI formatting options.",
   "requestFramePermissions": [],
-  "majorCapabilities": [
-    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
-  ]
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

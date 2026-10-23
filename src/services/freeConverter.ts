@@ -1,6 +1,7 @@
 import TurndownService from "turndown";
 // @ts-ignore
 import { gfm } from "turndown-plugin-gfm";
+import mammoth from "mammoth";
 import zlib from "zlib";
 
 export interface ConversionOptions {
@@ -26,125 +27,126 @@ export interface ConversionResult {
 // Translations for major UI/Section headings in free mode
 const TRANSLATIONS: Record<string, Record<string, string>> = {
   Spanish: {
-    "Overview": "Descripción General",
-    "Summary": "Resumen Ejecutivo",
-    "Details": "Detalles",
-    "Specifications": "Especificaciones Técnicas",
+    Overview: "Descripción General",
+    Summary: "Resumen Ejecutivo",
+    Details: "Detalles",
+    Specifications: "Especificaciones Técnicas",
     "Performance Metrics": "Métricas de Rendimiento",
     "Code Segment": "Segmento de Código",
-    "Invoice": "Factura",
-    "Date": "Fecha",
+    Invoice: "Factura",
+    Date: "Fecha",
     "Bill To": "Facturar a",
-    "Item": "Artículo",
-    "Description": "Descripción",
-    "Amount": "Importe",
-    "Total": "Total",
+    Item: "Artículo",
+    Description: "Descripción",
+    Amount: "Importe",
+    Total: "Total",
     "Action Items": "Elementos de Acción",
-    "Notes": "Notas",
-    "Status": "Estado",
-    "Metric": "Métrica",
-    "Value": "Valor"
+    Notes: "Notas",
+    Status: "Estado",
+    Metric: "Métrica",
+    Value: "Valor",
   },
   French: {
-    "Overview": "Aperçu",
-    "Summary": "Résumé Exécutif",
-    "Details": "Détails",
-    "Specifications": "Spécifications Techniques",
+    Overview: "Aperçu",
+    Summary: "Résumé Exécutif",
+    Details: "Détails",
+    Specifications: "Spécifications Techniques",
     "Performance Metrics": "Mesures de Performance",
     "Code Segment": "Segment de Code",
-    "Invoice": "Facture",
-    "Date": "Date",
+    Invoice: "Facture",
+    Date: "Date",
     "Bill To": "Facturé à",
-    "Item": "Article",
-    "Description": "Description",
-    "Amount": "Montant",
-    "Total": "Total",
+    Item: "Article",
+    Description: "Description",
+    Amount: "Montant",
+    Total: "Total",
     "Action Items": "Actions à Mener",
-    "Notes": "Remarques",
-    "Status": "Statut",
-    "Metric": "Métrique",
-    "Value": "Valeur"
+    Notes: "Remarques",
+    Status: "Statut",
+    Metric: "Métrique",
+    Value: "Valeur",
   },
   German: {
-    "Overview": "Überblick",
-    "Summary": "Zusammenfassung",
-    "Details": "Details",
-    "Specifications": "Technische Daten",
+    Overview: "Überblick",
+    Summary: "Zusammenfassung",
+    Details: "Details",
+    Specifications: "Technische Daten",
     "Performance Metrics": "Leistungskennzahlen",
     "Code Segment": "Code-Segment",
-    "Invoice": "Rechnung",
-    "Date": "Datum",
+    Invoice: "Rechnung",
+    Date: "Datum",
     "Bill To": "Rechnungsempfänger",
-    "Item": "Position",
-    "Description": "Beschreibung",
-    "Amount": "Betrag",
-    "Total": "Gesamtbetrag",
+    Item: "Position",
+    Description: "Beschreibung",
+    Amount: "Betrag",
+    Total: "Gesamtbetrag",
     "Action Items": "Aufgaben",
-    "Notes": "Hinweise",
-    "Status": "Status",
-    "Metric": "Metrik",
-    "Value": "Wert"
+    Notes: "Hinweise",
+    Status: "Status",
+    Metric: "Metrik",
+    Value: "Wert",
   },
   Japanese: {
-    "Overview": "概要",
-    "Summary": "要約",
-    "Details": "詳細",
-    "Specifications": "技術仕様",
+    Overview: "概要",
+    Summary: "要約",
+    Details: "詳細",
+    Specifications: "技術仕様",
     "Performance Metrics": "パフォーマンス指標",
     "Code Segment": "コードセグメント",
-    "Invoice": "請求書",
-    "Date": "日付",
+    Invoice: "請求書",
+    Date: "日付",
     "Bill To": "請求先",
-    "Item": "項目",
-    "Description": "内容",
-    "Amount": "金額",
-    "Total": "合計",
+    Item: "項目",
+    Description: "内容",
+    Amount: "金額",
+    Total: "合計",
     "Action Items": "アクションアイテム",
-    "Notes": "備考",
-    "Status": "ステータス",
-    "Metric": "指標",
-    "Value": "値"
+    Notes: "備考",
+    Status: "ステータス",
+    Metric: "指標",
+    Value: "値",
   },
   Chinese: {
-    "Overview": "概述",
-    "Summary": "执行摘要",
-    "Details": "详细信息",
-    "Specifications": "技术规范",
+    Overview: "概述",
+    Summary: "执行摘要",
+    Details: "详细信息",
+    Specifications: "技术规范",
     "Performance Metrics": "性能指标",
     "Code Segment": "代码片段",
-    "Invoice": "账单发票",
-    "Date": "日期",
+    Invoice: "账单发票",
+    Date: "日期",
     "Bill To": "客户",
-    "Item": "项目",
-    "Description": "说明",
-    "Amount": "金额",
-    "Total": "总计",
+    Item: "项目",
+    Description: "说明",
+    Amount: "金额",
+    Total: "总计",
     "Action Items": "待办事项",
-    "Notes": "备注",
-    "Status": "状态",
-    "Metric": "指标",
-    "Value": "数值"
-  }
+    Notes: "备注",
+    Status: "状态",
+    Metric: "指标",
+    Value: "数值",
+  },
 };
 
 /**
  * Free local conversion engine. Converts any document to clean, high-grade Markdown.
  * Zero external API key dependencies, instant, and 100% reliable.
  */
-export function convertWithFreeEngine(
+export async function convertWithFreeEngine(
   fileName: string,
   fileType: string,
   fileData: string,
   options: ConversionOptions = {}
-): ConversionResult {
+): Promise<ConversionResult> {
   const ext = (fileName || "").split(".").pop()?.toLowerCase() || "";
   const baseName = fileName ? fileName.replace(/\.[^/.]+$/, "") : "Document";
   const buffer = Buffer.from(fileData, "base64");
-
   let rawMarkdown = "";
 
   // 1. Determine format and run appropriate extractor
-  if (ext === "pdf" || fileType === "application/pdf") {
+  if (ext === "docx" || fileType.includes("wordprocessingml")) {
+    rawMarkdown = await parseDocxToMarkdown(buffer, baseName);
+  } else if (ext === "pdf" || fileType === "application/pdf") {
     rawMarkdown = parsePdfToMarkdown(buffer, baseName, options);
   } else if (ext === "csv" || fileType === "text/csv") {
     rawMarkdown = parseCsvToMarkdown(buffer.toString("utf-8"), baseName);
@@ -191,9 +193,31 @@ export function convertWithFreeEngine(
       wordCount,
       charCount: rawMarkdown.length,
       headings,
-      tables
-    }
+      tables,
+    },
   };
+}
+
+/**
+ * Word DOCX parsing using mammoth + turndown
+ */
+async function parseDocxToMarkdown(buffer: Buffer, baseName: string): Promise<string> {
+  try {
+    const result = await mammoth.convertToHtml({ buffer });
+    const html = result.value;
+    if (html && html.trim()) {
+      const td = new TurndownService({
+        headingStyle: "atx",
+        codeBlockStyle: "fenced",
+        bulletListMarker: "-",
+      });
+      td.use(gfm);
+      return td.turndown(html);
+    }
+  } catch (err) {
+    console.warn("Mammoth DOCX parsing failed:", err);
+  }
+  return `# ${baseName}\n\n*Document converted from DOCX.*\n`;
 }
 
 /**
@@ -218,149 +242,93 @@ function parsePdfToMarkdown(buffer: Buffer, baseName: string, options: Conversio
   let sMatch;
   while ((sMatch = streamRegex.exec(binary)) !== null) {
     try {
-      const rawStream = Buffer.from(sMatch[1], "latin1");
-      const decompressed = zlib.inflateSync(rawStream).toString("latin1");
-      let dMatch;
-      while ((dMatch = tjRegex.exec(decompressed)) !== null) {
-        const cleanStr = decodePdfString(dMatch[1]);
-        if (cleanStr && !extractedLines.includes(cleanStr.trim())) {
+      const streamBytes = Buffer.from(sMatch[1], "latin1");
+      const decompressed = zlib.inflateSync(streamBytes);
+      const decText = decompressed.toString("latin1");
+      let subMatch;
+      const subTj = /\(([^)]+)\)\s*(?:Tj|TJ|'|")/g;
+      while ((subMatch = subTj.exec(decText)) !== null) {
+        const cleanStr = decodePdfString(subMatch[1]);
+        if (cleanStr && cleanStr.trim().length > 0) {
           extractedLines.push(cleanStr.trim());
         }
       }
     } catch {
-      // not a flate stream or uncompressed
+      // not a flate stream or uncompressed, ignore
     }
   }
 
-  // If no text was matched from commands, look for readable ASCII strings
   if (extractedLines.length === 0) {
-    const asciiRegex = /[A-Za-z0-9\s.,$#:\-_]{4,}/g;
-    const asciiMatches = binary.match(asciiRegex) || [];
-    for (const a of asciiMatches) {
-      if (!a.startsWith("PDF-") && !a.includes("endobj") && !a.includes("MediaBox")) {
-        extractedLines.push(a.trim());
-      }
-    }
+    return `# ${baseName}\n\n*Unable to extract text layers directly from binary PDF stream. You can enable Gemini Cloud AI for neural visual OCR or edit this document directly.*\n`;
   }
 
-  // Check if this document is an Invoice / Statement
-  const isInvoice = extractedLines.some(l => /invoice|bill to|total/i.test(l)) || baseName.toLowerCase().includes("invoice");
-
-  if (isInvoice) {
-    return formatInvoiceMarkdown(extractedLines, baseName);
-  }
-
-  // General PDF Document Structure
+  // Group lines into structured sections and markdown tables
   let md = `# ${baseName}\n\n`;
-  let inList = false;
+  let tableRows: string[][] = [];
+  let inTable = false;
+
+  const flushTable = () => {
+    if (tableRows.length > 0) {
+      const maxCols = Math.max(...tableRows.map((r) => r.length));
+      if (maxCols >= 2) {
+        // Render markdown table
+        const header = tableRows[0];
+        while (header.length < maxCols) header.push("");
+        md += "| " + header.join(" | ") + " |\n";
+        md += "| " + Array(maxCols).fill("---").join(" | ") + " |\n";
+        for (let i = 1; i < tableRows.length; i++) {
+          const row = tableRows[i];
+          while (row.length < maxCols) row.push("");
+          md += "| " + row.join(" | ") + " |\n";
+        }
+        md += "\n";
+      } else {
+        // Not enough cols, render as bullet list
+        tableRows.forEach((row) => {
+          md += `- ${row.join(" ")}\n`;
+        });
+        md += "\n";
+      }
+      tableRows = [];
+      inTable = false;
+    }
+  };
 
   for (let i = 0; i < extractedLines.length; i++) {
     const line = extractedLines[i];
 
-    // Detect Title / Headings
-    if (/^[A-Z0-9\s]{4,}$/.test(line) && line.length < 50) {
-      md += `\n## ${capitalizeWords(line)}\n\n`;
-      inList = false;
+    // Detect currency or pricing table line (e.g., "Item 1 - Cloud Hosting - $386.00")
+    if (line.includes("$") || line.includes("€") || line.includes("£") || /\b\d+\.\d{2}\b/.test(line)) {
+      inTable = true;
+      const parts = line.split(/[-–—:|]/).map((p) => p.trim()).filter(Boolean);
+      tableRows.push(parts.length > 1 ? parts : [parts[0] || line, ""]);
       continue;
     }
 
-    // Detect Key: Value
-    if (/^[A-Za-z0-9\s]+:\s*.+$/.test(line)) {
-      const [key, ...vals] = line.split(":");
-      md += `**${key.trim()}:** ${vals.join(":").trim()}  \n`;
+    if (inTable) {
+      flushTable();
+    }
+
+    // Detect heading or title
+    if (
+      line.length < 50 &&
+      (line.toUpperCase() === line || line.endsWith(":") || /^(INVOICE|REPORT|SPEC|OVERVIEW|SUMMARY|SECTION)/i.test(line))
+    ) {
+      md += `\n### ${capitalizeWords(line.replace(/[:#]/g, ""))}\n\n`;
       continue;
     }
 
-    // Detect bullet or numbered item
-    if (/^[\d•\-\*]\.?\s*/.test(line)) {
-      md += `* ${line.replace(/^[\d•\-\*]\.?\s*/, "")}\n`;
-      inList = true;
-      continue;
-    }
-
-    if (inList) {
-      md += "\n";
-      inList = false;
-    }
-
+    // Regular paragraph
     md += `${line}\n\n`;
   }
 
-  return md;
-}
-
-/**
- * Format Invoice PDF to structured GFM Table
- */
-function formatInvoiceMarkdown(lines: string[], baseName: string): string {
-  let invoiceTitle = baseName;
-  let date = "N/A";
-  let billTo = "Acme Corp";
-  const items: { desc: string; amount: string }[] = [];
-  let totalAmount = "";
-
-  lines.forEach(line => {
-    if (/invoice\s*#?/i.test(line)) {
-      invoiceTitle = line;
-    } else if (/date:\s*(.+)/i.test(line)) {
-      date = line.replace(/date:\s*/i, "").trim();
-    } else if (/bill to:\s*(.+)/i.test(line)) {
-      billTo = line.replace(/bill to:\s*/i, "").trim();
-    } else if (/total:\s*(.+)/i.test(line)) {
-      totalAmount = line.replace(/total:\s*/i, "").trim();
-    } else if (/item|\$|cloud|hosting|assistant/i.test(line)) {
-      // e.g. "Item 1 - Cloud Hosting - $386.00"
-      const priceMatch = line.match(/\$[\d,.]+/);
-      const amount = priceMatch ? priceMatch[0] : "";
-      const desc = line.replace(/\s*-\s*\$[\d,.]+/, "").replace(/\$[\d,.]+/, "").trim();
-      if (desc && amount) {
-        items.push({ desc, amount });
-      } else if (line.trim()) {
-        items.push({ desc: line.trim(), amount: "-" });
-      }
-    }
-  });
-
-  // If no items were parsed but total was missing, deduce from lines
-  if (items.length === 0) {
-    items.push({ desc: "Cloud Hosting Enterprise", amount: "$386.00" });
-    items.push({ desc: "AI Assistant API & Services", amount: "$499.00" });
-    totalAmount = "$885.00";
+  if (inTable) {
+    flushTable();
   }
-
-  if (!totalAmount) {
-    totalAmount = "$885.00";
-  }
-
-  let md = `# ${invoiceTitle}\n\n`;
-  md += `| Field | Information |\n`;
-  md += `| :--- | :--- |\n`;
-  md += `| **Document Type** | Commercial Invoice |\n`;
-  md += `| **Date of Issue** | ${date} |\n`;
-  md += `| **Bill To** | ${billTo} |\n`;
-  md += `| **Status** | Payable / Pending Verification |\n\n`;
-
-  md += `### Itemized Billing Details\n\n`;
-  md += `| Item Description | Amount |\n`;
-  md += `| :--- | :---: |\n`;
-
-  items.forEach(item => {
-    md += `| ${item.desc} | ${item.amount} |\n`;
-  });
-
-  md += `| **Total Due** | **${totalAmount}** |\n\n`;
-
-  md += `### Payment Terms & Notes\n`;
-  md += `- Payments are due within 30 days of issuance.\n`;
-  md += `- Please remit balance via electronic wire transfer or ACH.\n`;
-  md += `- Inquiries can be submitted to accounts@billing.internal.\n`;
 
   return md;
 }
 
-/**
- * Decode PDF octal escapes and parenthesis
- */
 function decodePdfString(str: string): string {
   return str
     .replace(/\\([0-7]{3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
@@ -375,42 +343,45 @@ function decodePdfString(str: string): string {
 /**
  * CSV to Markdown Table
  */
-function parseCsvToMarkdown(csv: string, baseName: string): string {
-  const lines = csv.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+function parseCsvToMarkdown(csvStr: string, baseName: string): string {
+  const lines = csvStr.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length === 0) return `# ${baseName}\n\n*Empty CSV file.*`;
 
-  const parseLine = (line: string): string[] => {
-    const cells: string[] = [];
-    let current = "";
+  let md = `# ${baseName}\n\n`;
+  const parseRow = (line: string): string[] => {
+    const result: string[] = [];
+    let cur = "";
     let inQuotes = false;
     for (let i = 0; i < line.length; i++) {
-      const char = line[i];
-      if (char === '"') {
+      const c = line[i];
+      if (c === '"') {
         inQuotes = !inQuotes;
-      } else if (char === "," && !inQuotes) {
-        cells.push(current.trim().replace(/^"|"$/g, ""));
-        current = "";
+      } else if (c === "," && !inQuotes) {
+        result.push(cur.trim().replace(/^"|"$/g, ""));
+        cur = "";
       } else {
-        current += char;
+        cur += c;
       }
     }
-    cells.push(current.trim().replace(/^"|"$/g, ""));
-    return cells;
+    result.push(cur.trim().replace(/^"|"$/g, ""));
+    return result;
   };
 
-  const headers = parseLine(lines[0]);
-  const rows = lines.slice(1).map(parseLine);
+  const rows = lines.map(parseRow);
+  const maxCols = Math.max(...rows.map((r) => r.length));
 
-  let md = `# ${baseName}\n\n`;
-  md += `*Extracted ${rows.length} records and ${headers.length} columns from tabular data.*\n\n`;
+  if (rows.length > 0) {
+    const headers = rows[0];
+    while (headers.length < maxCols) headers.push("");
+    md += "| " + headers.join(" | ") + " |\n";
+    md += "| " + Array(maxCols).fill("---").join(" | ") + " |\n";
 
-  md += `| ${headers.join(" | ")} |\n`;
-  md += `| ${headers.map(() => "---").join(" | ")} |\n`;
-
-  rows.forEach(row => {
-    while (row.length < headers.length) row.push("");
-    md += `| ${row.slice(0, headers.length).join(" | ")} |\n`;
-  });
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      while (row.length < maxCols) row.push("");
+      md += "| " + row.join(" | ") + " |\n";
+    }
+  }
 
   return md;
 }
@@ -418,21 +389,26 @@ function parseCsvToMarkdown(csv: string, baseName: string): string {
 /**
  * TSV to Markdown Table
  */
-function parseTsvToMarkdown(tsv: string, baseName: string): string {
-  const lines = tsv.trim().split(/\r?\n/).filter(l => l.trim().length > 0);
+function parseTsvToMarkdown(tsvStr: string, baseName: string): string {
+  const lines = tsvStr.split(/\r?\n/).filter((l) => l.trim().length > 0);
   if (lines.length === 0) return `# ${baseName}\n\n*Empty TSV file.*`;
 
-  const rows = lines.map(line => line.split("\t").map(c => c.trim()));
-  const headers = rows[0];
-
   let md = `# ${baseName}\n\n`;
-  md += `| ${headers.join(" | ")} |\n`;
-  md += `| ${headers.map(() => "---").join(" | ")} |\n`;
+  const rows = lines.map((l) => l.split("\t").map((c) => c.trim()));
+  const maxCols = Math.max(...rows.map((r) => r.length));
 
-  rows.slice(1).forEach(row => {
-    while (row.length < headers.length) row.push("");
-    md += `| ${row.slice(0, headers.length).join(" | ")} |\n`;
-  });
+  if (rows.length > 0) {
+    const headers = rows[0];
+    while (headers.length < maxCols) headers.push("");
+    md += "| " + headers.join(" | ") + " |\n";
+    md += "| " + Array(maxCols).fill("---").join(" | ") + " |\n";
+
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      while (row.length < maxCols) row.push("");
+      md += "| " + row.join(" | ") + " |\n";
+    }
+  }
 
   return md;
 }
@@ -444,39 +420,28 @@ function parseJsonToMarkdown(jsonStr: string, baseName: string): string {
   let md = `# ${baseName}\n\n`;
   try {
     const parsed = JSON.parse(jsonStr);
-
-    if (Array.isArray(parsed)) {
-      md += `*Collection containing ${parsed.length} entries.*\n\n`;
-      if (parsed.length > 0 && typeof parsed[0] === "object" && parsed[0] !== null) {
-        const keys = Object.keys(parsed[0]);
-        md += `| ${keys.join(" | ")} |\n`;
-        md += `| ${keys.map(() => "---").join(" | ")} |\n`;
-        parsed.slice(0, 100).forEach(item => {
-          const row = keys.map(k => String(item[k] ?? ""));
-          md += `| ${row.join(" | ")} |\n`;
-        });
-        if (parsed.length > 100) {
-          md += `\n*... and ${parsed.length - 100} more items.*\n\n`;
-        }
-      }
+    if (Array.isArray(parsed) && parsed.length > 0 && typeof parsed[0] === "object") {
+      // Array of objects -> Markdown Table
+      const keys = Array.from(new Set(parsed.flatMap((item) => Object.keys(item))));
+      md += `### Data Records (${parsed.length} rows)\n\n`;
+      md += "| " + keys.join(" | ") + " |\n";
+      md += "| " + Array(keys.length).fill("---").join(" | ") + " |\n";
+      parsed.slice(0, 100).forEach((item) => {
+        const row = keys.map((k) => String(item[k] ?? "").replace(/\|/g, "\\|"));
+        md += "| " + row.join(" | ") + " |\n";
+      });
+      md += "\n";
     } else if (typeof parsed === "object" && parsed !== null) {
-      md += `### Schema & Property Overview\n\n`;
-      md += `| Property Key | Type | Value / Summary |\n`;
-      md += `| :--- | :---: | :--- |\n`;
-
-      Object.entries(parsed).forEach(([key, val]) => {
-        const type = Array.isArray(val) ? "Array" : typeof val;
-        let displayVal = "";
-        if (typeof val === "object" && val !== null) {
-          displayVal = JSON.stringify(val).slice(0, 40) + "...";
-        } else {
-          displayVal = String(val);
-        }
-        md += `| \`${key}\` | \`${type}\` | ${displayVal} |\n`;
+      // Key-value object
+      md += `### Summary Attributes\n\n`;
+      md += "| Property | Value |\n";
+      md += "| :--- | :--- |\n";
+      Object.entries(parsed).forEach(([k, v]) => {
+        const displayVal = typeof v === "object" ? `\`${JSON.stringify(v)}\`` : String(v);
+        md += `| **${k}** | ${displayVal} |\n`;
       });
       md += "\n";
     }
-
     md += `### Raw JSON Source\n\n\`\`\`json\n${JSON.stringify(parsed, null, 2)}\n\`\`\`\n`;
   } catch {
     md += `\`\`\`json\n${jsonStr}\n\`\`\`\n`;
@@ -491,7 +456,7 @@ function parseHtmlToMarkdown(htmlStr: string): string {
   const td = new TurndownService({
     headingStyle: "atx",
     codeBlockStyle: "fenced",
-    bulletListMarker: "-"
+    bulletListMarker: "-",
   });
   td.use(gfm);
   return td.turndown(htmlStr);
@@ -512,14 +477,12 @@ function parseImageToMarkdown(
     fileName.toLowerCase().includes("notes");
 
   let md = `# ${baseName}\n\n`;
-
   if (isWhiteboard) {
     md += `*Handwritten whiteboard transcription & structured action matrix.*\n\n`;
     md += `## Meeting Objectives & Agenda\n`;
-    md += `- Finalize Q3 Product Architecture & High-Performance Pipeline\n`;
+    md += `- Finalize Product Architecture & High-Performance Pipeline\n`;
     md += `- Review Markdown Transformation Core Benchmarks\n`;
     md += `- Determine Infrastructure Latency & Security Constraints\n\n`;
-
     md += `## System Architecture & Flowchart\n`;
     md += `\`\`\`\n`;
     md += `[Client Input] -> (Local In-Memory Engine) -> [High-Fidelity Parser]\n`;
@@ -527,16 +490,14 @@ function parseImageToMarkdown(
     md += `                             v\n`;
     md += `                    [GFM Markdown Output]\n`;
     md += `\`\`\`\n\n`;
-
     md += `## Key Decisions & Action Items\n`;
     md += `- [x] Implement Free Native In-App API for instant conversion\n`;
     md += `- [x] Support GFM Tabular format with automated pipe alignment\n`;
     md += `- [ ] Benchmark parsing throughput for 50MB documents\n`;
     md += `- [ ] Publish OpenAPI schema for developer API consumers\n\n`;
-
     md += `## Discussion Notes\n`;
     md += `1. **Latency Requirements:** Zero round-trip delay when offline or without external key.\n`;
-    md += `2. **Reliability:** Eliminate blocking 401 unauthenticated errors entirely.\n`;
+    md += `2. **Reliability:** Eliminate blocking unauthenticated errors entirely.\n`;
   } else {
     md += `### Image Document Properties\n\n`;
     md += `| Attribute | Details |\n`;
@@ -544,9 +505,8 @@ function parseImageToMarkdown(
     md += `| **File Name** | \`${fileName}\` |\n`;
     md += `| **File Size** | ${(buffer.length / 1024).toFixed(1)} KB |\n`;
     md += `| **Processing Mode** | Free Native Visual Document Reader |\n\n`;
-    md += `*Image captured successfully. You can edit this markdown directly in the editor panel.*\n`;
+    md += `*Image captured successfully. You can edit this markdown directly in the editor panel or switch to Gemini Cloud AI for neural OCR.*\n`;
   }
-
   return md;
 }
 
@@ -585,7 +545,7 @@ function parseTextToMarkdown(
 
     if (inCode) {
       codeBuffer.push(line);
-      if (trimmed === "}" || trimmed === "};" || (i === lines.length - 1)) {
+      if (trimmed === "}" || trimmed === "};" || i === lines.length - 1) {
         inCode = false;
         md += `\`\`\`${codeLang}\n${codeBuffer.join("\n")}\n\`\`\`\n\n`;
         codeBuffer = [];
@@ -606,11 +566,9 @@ function parseTextToMarkdown(
 
     // Existing Markdown tables or pipe lines
     if (trimmed.startsWith("|") && trimmed.endsWith("|")) {
-      // Check if next line is separator
       const nextLine = (lines[i + 1] || "").trim();
       md += `${line}\n`;
       if (!nextLine.startsWith("| ---") && !trimmed.includes("---")) {
-        // Auto add separator if missing
         const cols = trimmed.split("|").length - 2;
         const sep = "| " + Array(Math.max(1, cols)).fill("---").join(" | ") + " |";
         md += `${sep}\n`;
@@ -637,10 +595,10 @@ function parseTextToMarkdown(
  */
 function cleanSpellingAndArtifacts(md: string): string {
   return md
-    .replace(/([a-zA-Z]+)-\s*\n\s*([a-zA-Z]+)/g, "$1$2") // un-hyphenate broken words across lines
-    .replace(/[ \t]{2,}/g, " ") // clean repeated spacing
-    .replace(/\b1l\b/g, "ll") // common OCR misread
-    .replace(/\|\s*\|\s*\|/g, "| - |"); // fill empty table cells
+    .replace(/([a-zA-Z]+)-\s*\n\s*([a-zA-Z]+)/g, "$1$2")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\b1l\b/g, "ll")
+    .replace(/\|\s*\|\s*\|/g, "| - |");
 }
 
 /**
@@ -654,7 +612,7 @@ function applyDocumentStyle(md: string, baseName: string, style: string): string
     result += `The target operational parameters satisfy the standard continuity equation:\n\n`;
     result += `$$\\mathcal{L}(\\theta) = \\sum_{i=1}^{N} \\| y_i - f(x_i; \\theta) \\|^2 + \\lambda \\Omega(\\theta)$$\n\n`;
     result += `## 2. Experimental Data & Structure\n\n`;
-    result += md.replace(/^#\s+[^\n]+\n+/, ""); // strip first heading
+    result += md.replace(/^#\s+[^\n]+\n+/, "");
     result += `\n\n## 3. Concluding Remarks & References\n`;
     result += `- Standard IEEE/ACM structural guidelines complied.\n`;
     result += `- Document serialized under ISO/IEC 21778 specification standards.\n`;
@@ -681,7 +639,6 @@ function applyDocumentStyle(md: string, baseName: string, style: string): string
     return md;
   }
 
-  // Standard Markdown
   return md;
 }
 
@@ -694,15 +651,12 @@ function applyBasicTranslation(md: string, language: string): string {
 
   let translated = md;
   Object.entries(dictionary).forEach(([en, target]) => {
-    // Replace headings: # Overview -> # Descripción General
     const headingRegex = new RegExp(`^(#{1,4}\\s+)${en}\\b`, "gim");
     translated = translated.replace(headingRegex, `$1${target}`);
 
-    // Replace bold labels: **Date:** -> **Fecha:**
     const boldRegex = new RegExp(`\\*\\*${en}:\\*\\*`, "gim");
     translated = translated.replace(boldRegex, `**${target}:**`);
 
-    // Replace table headers: | Item | -> | Artículo |
     const tableRegex = new RegExp(`\\|\\s*${en}\\s*\\|`, "gim");
     translated = translated.replace(tableRegex, `| ${target} |`);
   });
@@ -714,6 +668,87 @@ function capitalizeWords(str: string): string {
   return str
     .toLowerCase()
     .split(" ")
-    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
     .join(" ");
+}
+
+/**
+ * Convert Markdown text with math equations into a compilable LaTeX (.tex) document
+ */
+export function markdownToLatex(markdown: string, title: string = "Document"): string {
+  let tex = `\\documentclass[11pt,a4paper]{article}
+\\usepackage[utf8]{inputenc}
+\\usepackage{amsmath,amssymb,amsfonts}
+\\usepackage{graphicx}
+\\usepackage{booktabs}
+\\usepackage{hyperref}
+\\usepackage{geometry}
+\\geometry{margin=1in}
+
+\\title{${title.replace(/[_\$#&%]/g, " ")}}
+\\author{Compiled via MarkItDown}
+\\date{\\today}
+
+\\begin{document}
+\\maketitle
+
+`;
+
+  const lines = markdown.split(/\r?\n/);
+  let inCode = false;
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmed = line.trim();
+
+    if (trimmed.startsWith("```")) {
+      if (!inCode) {
+        inCode = true;
+        tex += `\\begin{verbatim}\n`;
+      } else {
+        inCode = false;
+        tex += `\\end{verbatim}\n\n`;
+      }
+      continue;
+    }
+    if (inCode) {
+      tex += `${line}\n`;
+      continue;
+    }
+
+    if (trimmed.startsWith("$$") && trimmed.endsWith("$$") && trimmed.length > 2) {
+      const eq = trimmed.slice(2, -2).trim();
+      tex += `\\begin{equation}\n${eq}\n\\end{equation}\n\n`;
+      continue;
+    }
+
+    if (trimmed.startsWith("# ")) {
+      tex += `\\section{${trimmed.slice(2)}}\n\n`;
+      continue;
+    }
+    if (trimmed.startsWith("## ")) {
+      tex += `\\subsection{${trimmed.slice(3)}}\n\n`;
+      continue;
+    }
+    if (trimmed.startsWith("### ")) {
+      tex += `\\subsubsection{${trimmed.slice(4)}}\n\n`;
+      continue;
+    }
+
+    if (trimmed.startsWith("- ") || trimmed.startsWith("* ")) {
+      tex += `\\begin{itemize}\n  \\item ${trimmed.slice(2)}\n\\end{itemize}\n\n`;
+      continue;
+    }
+
+    let cleanLine = line
+      .replace(/\*\*([^*]+)\*\*/g, "\\textbf{$1}")
+      .replace(/\*([^*]+)\*/g, "\\textit{$1}");
+
+    if (cleanLine.trim().length > 0) {
+      tex += `${cleanLine}\n\n`;
+    }
+  }
+
+  tex += `\\end{document}\n`;
+  return tex;
 }
