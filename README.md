@@ -53,11 +53,16 @@ Start the built app:
 npm start
 ```
 
+## Cloudflare Pages
+
+The Pages deployment configuration is defined in [`wrangler.toml`](./wrangler.toml), which points Pages to the Vite build output in `dist`. Use `npm run build:pages` as the Pages build command. The Express API server is not included in the static Pages deployment.
+
 ## Project scripts
 
 | Command | Description |
 | --- | --- |
 | `npm run dev` | Start the development server |
 | `npm run build` | Build the web app and server |
+| `npm run build:pages` | Build the static web app for Cloudflare Pages |
 | `npm start` | Run the production build |
 | `npm run lint` | Run the TypeScript checks |
