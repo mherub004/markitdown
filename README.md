@@ -55,7 +55,7 @@ npm start
 
 ## Cloudflare Pages
 
-The Pages deployment configuration is defined in [`wrangler.toml`](./wrangler.toml), which points Pages to the Vite build output in `dist`. Use `npm run build:pages` as the Pages build command. The Express API server is not included in the static Pages deployment.
+The repository includes the static frontend build in `dist` and a Pages [`_redirects`](./_redirects) file so the app can be served from the repository root without a build step. If configuring a build, use `npm run build:pages` and `dist` as the output directory. The Express API server is not included in the static Pages deployment.
 
 ## Project scripts
 
