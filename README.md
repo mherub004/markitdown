@@ -65,7 +65,7 @@ Deploy this repository as a **Cloudflare Pages** project using:
 
 Install dependencies with `bun install --frozen-lockfile` to use the committed lockfile. In Pages build settings, set `SKIP_DEPENDENCY_INSTALL=1` and use `bun install --frozen-lockfile && npm run build:pages` as the build command if automatic installation is enabled. Pin `BUN_VERSION=1.3.11` for the tested tool version.
 
-Pages Functions in `functions/api` provide health checks, native document conversion, and web URL conversion. `wrangler.toml` enables Node.js compatibility for the document parser. Gemini AI is available only through the Express server; the Pages API uses the native engine without credentials. Native PDF and image conversion retains the existing engine's extraction limitations.
+Pages Functions in `functions/api` provide health checks, native document conversion, and web URL conversion. `wrangler.toml` enables Node.js compatibility for the document parser. Gemini AI is available only through the Express server; the Pages API uses the native engine without credentials. PDF text extraction uses PDF.js through `unpdf` to decode compressed streams and embedded font Unicode mappings. Scanned PDFs, outlined text, and fonts without usable mappings may require OCR. The native engine does not perform image OCR. KaTeX styles and fonts are bundled locally with the matching installed renderer.
 
 Do not deploy the repository root as static files or use the committed `dist` snapshot without rebuilding: the HTML and hashed assets must come from the same build. Deploy from the repository root so Pages also discovers `functions`.
 
@@ -73,7 +73,7 @@ After a successful Pages deployment, open **Workers & Pages → markitdown → C
 
 For a local Pages preview, build the frontend and run `wrangler pages dev dist` from the repository root. To deploy using an authenticated Wrangler installation, run `wrangler pages deploy dist --project-name markitdown` from the repository root. This requires Cloudflare account access; never commit API tokens.
 
-With the local Pages server running on port 8788, run `node scripts/smoke-pages.mjs` to check frontend assets, health, HTML/CSV/DOCX conversion, and missing-input errors. To check a deployed site, pass its HTTPS address as the first argument.
+With the local Pages server running on port 8788, run `node scripts/smoke-pages.mjs` to check frontend assets, health, HTML/CSV/DOCX/PDF conversion, and missing-input errors. To check a deployed site, pass its HTTPS address as the first argument. Run `node_modules/.bin/tsx --test scripts/*.test.ts` for response-handling and PDF regression tests, including embedded Unicode fonts and documents requiring OCR.
 
 ## Project scripts
 

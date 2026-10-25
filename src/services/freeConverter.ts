@@ -2,7 +2,7 @@ import TurndownService from "turndown";
 // @ts-ignore
 import { gfm } from "turndown-plugin-gfm";
 import mammoth from "mammoth";
-import zlib from "zlib";
+import { extractText, getDocumentProxy } from "unpdf";
 
 export interface ConversionOptions {
   style?: string;
@@ -148,7 +148,7 @@ export async function convertWithFreeEngine(
   if (ext === "docx" || fileType.includes("wordprocessingml")) {
     rawMarkdown = await parseDocxToMarkdown(buffer, baseName, options.htmlToMarkdown);
   } else if (ext === "pdf" || fileType === "application/pdf") {
-    rawMarkdown = parsePdfToMarkdown(buffer, baseName, options);
+    rawMarkdown = await parsePdfToMarkdown(buffer, baseName);
   } else if (ext === "csv" || fileType === "text/csv") {
     rawMarkdown = parseCsvToMarkdown(buffer.toString("utf-8"), baseName);
   } else if (ext === "tsv" || fileType === "text/tab-separated-values") {
@@ -226,121 +226,25 @@ async function parseDocxToMarkdown(buffer: Buffer, baseName: string, htmlToMarkd
 /**
  * PDF Text & Layout Extractor
  */
-function parsePdfToMarkdown(buffer: Buffer, baseName: string, options: ConversionOptions): string {
-  const binary = buffer.toString("latin1");
-  const extractedLines: string[] = [];
-
-  // Match all PDF text strings: (text) Tj, (text) ' or [(part1)...] TJ
-  const tjRegex = /\(([^)]+)\)\s*(?:Tj|TJ|'|")/g;
-  let match;
-  while ((match = tjRegex.exec(binary)) !== null) {
-    const cleanStr = decodePdfString(match[1]);
-    if (cleanStr && cleanStr.trim().length > 0) {
-      extractedLines.push(cleanStr.trim());
+async function parsePdfToMarkdown(buffer: Buffer, baseName: string): Promise<string> {
+  // PDF text uses font-specific glyph codes, compressed streams and ToUnicode
+  // maps. PDF.js resolves those structures; decoding raw bytes corrupts text.
+  const pdf = await getDocumentProxy(Uint8Array.from(buffer));
+  try {
+    const { text } = await extractText(pdf, { mergePages: false });
+    const pages = text.map(page => page.trim()).filter(Boolean);
+    if (pages.length === 0) {
+      throw new Error("This PDF has no readable text layer. It may be scanned or contain outlined text. Use OCR to create a searchable PDF, then upload it again.");
     }
+    const combined = pages.join("\n\n");
+    const unreadable = combined.match(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\ufffd]/g)?.length || 0;
+    if (unreadable / combined.length > 0.02) {
+      throw new Error("This PDF's font encoding could not be decoded reliably. Re-export it with Unicode text or use OCR, then upload it again.");
+    }
+    return `# ${baseName}\n\n${combined}\n`;
+  } finally {
+    await pdf.destroy();
   }
-
-  // Also check for FlateDecode / compressed streams in PDF
-  const streamRegex = /stream\r?\n([\s\S]*?)\r?\n?endstream/g;
-  let sMatch;
-  while ((sMatch = streamRegex.exec(binary)) !== null) {
-    try {
-      const streamBytes = Buffer.from(sMatch[1], "latin1");
-      const decompressed = zlib.inflateSync(streamBytes);
-      const decText = decompressed.toString("latin1");
-      let subMatch;
-      const subTj = /\(([^)]+)\)\s*(?:Tj|TJ|'|")/g;
-      while ((subMatch = subTj.exec(decText)) !== null) {
-        const cleanStr = decodePdfString(subMatch[1]);
-        if (cleanStr && cleanStr.trim().length > 0) {
-          extractedLines.push(cleanStr.trim());
-        }
-      }
-    } catch {
-      // not a flate stream or uncompressed, ignore
-    }
-  }
-
-  if (extractedLines.length === 0) {
-    return `# ${baseName}\n\n*Unable to extract text layers directly from binary PDF stream. You can enable Gemini Cloud AI for neural visual OCR or edit this document directly.*\n`;
-  }
-
-  // Group lines into structured sections and markdown tables
-  let md = `# ${baseName}\n\n`;
-  let tableRows: string[][] = [];
-  let inTable = false;
-
-  const flushTable = () => {
-    if (tableRows.length > 0) {
-      const maxCols = Math.max(...tableRows.map((r) => r.length));
-      if (maxCols >= 2) {
-        // Render markdown table
-        const header = tableRows[0];
-        while (header.length < maxCols) header.push("");
-        md += "| " + header.join(" | ") + " |\n";
-        md += "| " + Array(maxCols).fill("---").join(" | ") + " |\n";
-        for (let i = 1; i < tableRows.length; i++) {
-          const row = tableRows[i];
-          while (row.length < maxCols) row.push("");
-          md += "| " + row.join(" | ") + " |\n";
-        }
-        md += "\n";
-      } else {
-        // Not enough cols, render as bullet list
-        tableRows.forEach((row) => {
-          md += `- ${row.join(" ")}\n`;
-        });
-        md += "\n";
-      }
-      tableRows = [];
-      inTable = false;
-    }
-  };
-
-  for (let i = 0; i < extractedLines.length; i++) {
-    const line = extractedLines[i];
-
-    // Detect currency or pricing table line (e.g., "Item 1 - Cloud Hosting - $386.00")
-    if (line.includes("$") || line.includes("€") || line.includes("£") || /\b\d+\.\d{2}\b/.test(line)) {
-      inTable = true;
-      const parts = line.split(/[-–—:|]/).map((p) => p.trim()).filter(Boolean);
-      tableRows.push(parts.length > 1 ? parts : [parts[0] || line, ""]);
-      continue;
-    }
-
-    if (inTable) {
-      flushTable();
-    }
-
-    // Detect heading or title
-    if (
-      line.length < 50 &&
-      (line.toUpperCase() === line || line.endsWith(":") || /^(INVOICE|REPORT|SPEC|OVERVIEW|SUMMARY|SECTION)/i.test(line))
-    ) {
-      md += `\n### ${capitalizeWords(line.replace(/[:#]/g, ""))}\n\n`;
-      continue;
-    }
-
-    // Regular paragraph
-    md += `${line}\n\n`;
-  }
-
-  if (inTable) {
-    flushTable();
-  }
-
-  return md;
-}
-
-function decodePdfString(str: string): string {
-  return str
-    .replace(/\\([0-7]{3})/g, (_, oct) => String.fromCharCode(parseInt(oct, 8)))
-    .replace(/\\n/g, "\n")
-    .replace(/\\r/g, "\r")
-    .replace(/\\t/g, "\t")
-    .replace(/\\\(/g, "(")
-    .replace(/\\\)/g, ")")
-    .replace(/\\\\/g, "\\");
 }
 
 /**
