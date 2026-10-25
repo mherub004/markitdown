@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
 import rehypeKatex from "rehype-katex";
+import { readConversionResponse } from "./lib/conversionApi";
 import {
   UploadCloud,
   FileText,
@@ -143,10 +144,7 @@ export default function App() {
         }),
       });
 
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to convert document.");
-      }
+      const data = await readConversionResponse(response);
 
       setMarkdown(data.markdown);
       setEngineUsed(data.engine || "Native Markdown Engine");
@@ -176,10 +174,7 @@ export default function App() {
         body: JSON.stringify({ url: urlInput.trim() }),
       });
 
-      const data = await response.json();
-      if (!response.ok || !data.success) {
-        throw new Error(data.error || "Failed to scrape and convert URL.");
-      }
+      const data = await readConversionResponse(response);
 
       setMarkdown(data.markdown);
       setEngineUsed("Web Scraper Engine");

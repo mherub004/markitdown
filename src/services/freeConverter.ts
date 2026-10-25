@@ -10,6 +10,7 @@ export interface ConversionOptions {
   cleanSpelling?: boolean;
   codeBlocks?: boolean;
   language?: string;
+  htmlToMarkdown?: (html: string) => string;
 }
 
 export interface ConversionResult {
@@ -145,7 +146,7 @@ export async function convertWithFreeEngine(
 
   // 1. Determine format and run appropriate extractor
   if (ext === "docx" || fileType.includes("wordprocessingml")) {
-    rawMarkdown = await parseDocxToMarkdown(buffer, baseName);
+    rawMarkdown = await parseDocxToMarkdown(buffer, baseName, options.htmlToMarkdown);
   } else if (ext === "pdf" || fileType === "application/pdf") {
     rawMarkdown = parsePdfToMarkdown(buffer, baseName, options);
   } else if (ext === "csv" || fileType === "text/csv") {
@@ -155,7 +156,7 @@ export async function convertWithFreeEngine(
   } else if (ext === "json" || fileType === "application/json") {
     rawMarkdown = parseJsonToMarkdown(buffer.toString("utf-8"), baseName);
   } else if (ext === "html" || ext === "htm" || fileType === "text/html") {
-    rawMarkdown = parseHtmlToMarkdown(buffer.toString("utf-8"));
+    rawMarkdown = (options.htmlToMarkdown || parseHtmlToMarkdown)(buffer.toString("utf-8"));
   } else if (
     ["png", "jpg", "jpeg", "webp", "gif"].includes(ext) ||
     fileType.startsWith("image/")
@@ -201,11 +202,13 @@ export async function convertWithFreeEngine(
 /**
  * Word DOCX parsing using mammoth + turndown
  */
-async function parseDocxToMarkdown(buffer: Buffer, baseName: string): Promise<string> {
+async function parseDocxToMarkdown(buffer: Buffer, baseName: string, htmlToMarkdown?: (html: string) => string): Promise<string> {
   try {
-    const result = await mammoth.convertToHtml({ buffer });
+    // Mammoth's Node build reads buffer; its Worker/browser build reads arrayBuffer.
+    const result = await mammoth.convertToHtml({ buffer, arrayBuffer: Uint8Array.from(buffer).buffer });
     const html = result.value;
     if (html && html.trim()) {
+      if (htmlToMarkdown) return htmlToMarkdown(html);
       const td = new TurndownService({
         headingStyle: "atx",
         codeBlockStyle: "fenced",

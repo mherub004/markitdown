@@ -12,22 +12,6 @@
   </head>
   <body class="bg-[#F8FAFC] text-[#0F172A] antialiased selection:bg-blue-500/20 selection:text-blue-700 min-h-screen">
     <div id="root"></div>
-    <script type="module">
-      const startApp = (load) => load.catch((error) => {
-        console.error("Failed to load MarkItDown:", error);
-        document.querySelector("#root").textContent = "MarkItDown could not load. Please refresh the page.";
-      });
-
-      if (import.meta.env?.DEV) {
-        startApp(import("/src/main.tsx"));
-      } else {
-        const stylesheet = document.createElement("link");
-        stylesheet.rel = "stylesheet";
-        stylesheet.href = "/assets/index-BmmMn5TK.css";
-        document.head.append(stylesheet);
-        const bundle = "/assets/index-BjElecM_.js";
-        startApp(import(/* @vite-ignore */ bundle));
-      }
-    </script>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
