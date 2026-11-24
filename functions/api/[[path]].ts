@@ -5,6 +5,45 @@ import { createDocument } from "@mixmark-io/domino";
 import { gfm } from "turndown-plugin-gfm";
 import { convertWithFreeEngine } from "../../src/services/freeConverter";
 
+const MAX_HTML_BYTES = 2_000_000;
+function publicUrl(input: string): URL {
+  const url = new URL(/^https?:\/\//i.test(input.trim()) ? input.trim() : `https://${input.trim()}`);
+  const host = url.hostname.toLowerCase().replace(/\.$/, "");
+  if (!["https:", "http:"].includes(url.protocol) || url.username || url.password ||
+      !host || host === "localhost" || /\.(localhost|local|internal|test)$/.test(host) ||
+      host.includes(":")) throw new Error("Enter a public HTTP or HTTPS URL.");
+  const ip = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (ip) {
+    const n = ip.slice(1).map(Number);
+    if (n.some(x => x > 255) || n[0] === 0 || n[0] === 10 || n[0] === 127 ||
+        n[0] >= 224 || (n[0] === 169 && n[1] === 254) ||
+        (n[0] === 172 && n[1] >= 16 && n[1] <= 31) ||
+        (n[0] === 192 && n[1] === 168) || (n[0] === 100 && n[1] >= 64 && n[1] <= 127))
+      throw new Error("Enter a public HTTP or HTTPS URL.");
+  }
+  return url;
+}
+async function limitedHtml(response: Response): Promise<string> {
+  if (Number(response.headers.get("content-length") || 0) > MAX_HTML_BYTES ||
+      !/text\/html|application\/xhtml\+xml/i.test(response.headers.get("content-type") || ""))
+    throw new Error("Source must be an HTML page under 2 MB.");
+  const reader = response.body?.getReader();
+  if (!reader) return "";
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    size += value.byteLength;
+    if (size > MAX_HTML_BYTES) { await reader.cancel(); throw new Error("Source exceeds 2 MB."); }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.byteLength; }
+  return new TextDecoder().decode(bytes);
+}
+
 function htmlToMarkdown(html: string): string {
   const td = new TurndownService({ headingStyle: "atx", codeBlockStyle: "fenced", bulletListMarker: "-" });
   td.use(gfm);
@@ -44,13 +83,13 @@ export async function onRequest({ request }: { request: Request }): Promise<Resp
       if (!body.url?.trim()) {
         return Response.json({ success: false, error: "URL is required." }, { status: 400 });
       }
-      const url = new URL(/^https?:\/\//i.test(body.url.trim()) ? body.url.trim() : `https://${body.url.trim()}`);
-      if (!["https:", "http:"].includes(url.protocol) || url.username || url.password) {
-        return Response.json({ success: false, error: "Enter a public HTTP or HTTPS URL." }, { status: 400 });
-      }
-      const upstream = await fetch(url, { signal: AbortSignal.timeout(15000), headers: { Accept: "text/html" } });
+      let url: URL;
+      try { url = publicUrl(body.url); }
+      catch { return Response.json({ success: false, error: "Enter a public HTTP or HTTPS URL." }, { status: 400 }); }
+      const upstream = await fetch(url, { signal: AbortSignal.timeout(15000), redirect: "manual", headers: { Accept: "text/html" } });
+      if (upstream.status >= 300 && upstream.status < 400) throw new Error("Redirected sources are not supported.");
       if (!upstream.ok) throw new Error(`Source returned HTTP ${upstream.status}.`);
-      const $ = cheerio.load(await upstream.text());
+      const $ = cheerio.load(await limitedHtml(upstream));
       const title = $('meta[property="og:title"]').attr("content") || $("title").text().trim() || "Web Document";
       $("script, style, noscript, iframe, svg, nav, footer, header, form, button").remove();
       const main = $("article, main, #content, .content, .post, .markdown-body").first();
